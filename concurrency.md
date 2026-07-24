@@ -64,6 +64,11 @@ Because the two workers never update the same counter, the CLI needs no mutex.
 This is an important design principle: avoiding shared mutable state is often
 safer than adding locks around it.
 
+In particular, the first thread writes only to `first`, the second writes only
+to `second`, and the main thread reads those variables only after both calls to
+`join`. A mutex would be necessary if both workers incremented one shared
+counter, as they do in `s61.cpp` and `s62.cpp`.
+
 ### Process design
 
 `run_processes` creates two pipes and forks two children. Each child counts one
@@ -116,6 +121,33 @@ The important functions in `main.cpp` are:
 
 Separating the counting function from the concurrency mechanism makes the code
 easier to test and makes the thread/process comparison fair.
+
+## Timing the execution
+
+The CLI uses `std::chrono::steady_clock` to measure elapsed wall-clock time.
+This clock is monotonic, so changes to the computer's calendar clock cannot
+make an interval jump forward or backward.
+
+Timing begins immediately before `run_threads` or `run_processes` and ends
+after both workers have completed. The reported duration therefore includes:
+
+- creating threads or processes;
+- reading and counting both files;
+- thread joining or pipe communication;
+- waiting for both child processes.
+
+It excludes argument parsing and printing the final result. Output is reported
+in milliseconds with three digits after the decimal point:
+
+```text
+42 total words
+Execution time: 0.381 ms
+```
+
+One run is not a reliable benchmark because file-system caching and system load
+vary. Run each mode several times with the same inputs and compare a median or
+average. Timing demonstrates observed performance; it does not change the
+fundamental memory and ownership differences between threads and processes.
 
 ## How to debug concurrent programs
 

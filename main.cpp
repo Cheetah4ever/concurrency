@@ -1,7 +1,9 @@
 #include <cerrno>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -318,12 +320,20 @@ int main(int argc, char *argv[])
     try
     {
         const Options options = parse_options(argc, argv);
+        const auto start = std::chrono::steady_clock::now();
+
         const std::uint64_t total = options.use_threads
                                         ? run_threads(options)
                                         : run_processes(options);
 
+        const auto finish = std::chrono::steady_clock::now();
+        const std::chrono::duration<double, std::milli> elapsed =
+            finish - start;
+
         std::cout << total << " total "
-                  << function_name(options.function) << '\n';
+                  << function_name(options.function) << '\n'
+                  << "Execution time: " << std::fixed << std::setprecision(3)
+                  << elapsed.count() << " ms\n";
         return 0;
     }
     catch (const std::exception &error)
